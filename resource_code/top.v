@@ -14,14 +14,7 @@ module top(
     output wire iread_ce,
     output wire [31:0] iram_addr,
     input wire [31:0] ram_inst,
-    input wire irom_fin,
-    //´®¿ÚÏà¹Ø
-    output wire [7:0] uart_wdata,
-    output wire uart_write_ce,
-    input wire [7:0] uart_rdata,
-    output wire clean_recv_flag,
-    input wire recv_flag,
-    input wire send_flag
+    input wire irom_fin
 );
 (* dont_touch = "1" *)wire [31:0] inst_address;
 (* dont_touch = "1" *)wire [31:0] cur_inst;
@@ -380,13 +373,7 @@ mem mem(
     .write_ce(dwrite_ce),
     .wdata(wdata),
     .read_ce(dread_ce),
-    .ram_rdata(ram_rdata),
-    .uart_wdata(uart_wdata),
-    .uart_write_ce(uart_write_ce),
-    .uart_rdata(uart_rdata),
-    .clean_recv_flag(clean_recv_flag),
-    .recv_flag(recv_flag),
-    .send_flag(send_flag)
+    .ram_rdata(ram_rdata)
 );
 
 redirect redirect(

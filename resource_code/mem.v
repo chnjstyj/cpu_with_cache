@@ -16,14 +16,7 @@
     output reg write_ce,
     output reg [31:0] wdata,
     output reg read_ce,
-    input [31:0] ram_rdata,
-    //串口相关
-    output reg [7:0] uart_wdata,
-    output reg uart_write_ce,
-    input [7:0] uart_rdata,
-    output reg clean_recv_flag,
-    input recv_flag,
-    input send_flag
+    input [31:0] ram_rdata
 );
 
 wire [31:0] dram_address;
@@ -55,7 +48,7 @@ always @(posedge clk or posedge rst) begin
         write_ce <= 1'b0;
         dram_write_addr <= 32'h00000000;
     end
-    else if(MemWrite && dram_address != 32'h7f400fe) begin 
+    else if(MemWrite) begin 
         write_ce <= 1'b1;
         dram_write_addr <= dram_address;
     end
@@ -66,12 +59,9 @@ end
 always @(posedge clk or posedge rst) begin 
     if (rst == 1'b1) begin 
         wdata <= 32'h00000000;
-        uart_wdata <= 8'h00;
-        uart_write_ce <= 1'b0;
     end
     else begin 
-        if(MemWrite && dram_address != 32'h7f400fe) begin 
-            uart_write_ce <= 1'b0;
+        if(MemWrite) begin 
             case (mem_sel)
                 2'b00:wdata <= 32'h00000000;
                 2'b01:begin 
@@ -88,53 +78,30 @@ always @(posedge clk or posedge rst) begin
                 default:wdata <= 32'h00000000;
             endcase
         end
-        else if(MemWrite && dram_address == 32'h7f400fe) begin 
-            uart_wdata <= din[7:0];
-            uart_write_ce <= 1'b1;
-        end
-        else begin 
-            uart_write_ce <= 1'b0;
-        end 
     end
 end 
 
 //从内存读数据
 always @(*) begin 
         if(MemRead) begin 
-            case (dram_address)
-            32'h7f400fe:begin        //读串口的数据  清除接收标志位
-                data_out <= {24'b0,uart_rdata};
-                clean_recv_flag <= 1'b1;
-                read_ce <= 1'b0;
-            end
-            32'h7f400ff:begin        //读标志位
-                data_out <= {30'b0,recv_flag,send_flag};
-                clean_recv_flag <= 1'b0;
-                read_ce <= 1'b0;
-            end
-            default:begin
-                    read_ce <= 1'b1;
-                    clean_recv_flag <= 1'b0;
-                    case(mem_sel)
-                    2'b00:data_out <= 32'h00000000;
-                    2'b01:begin 
-                        case(alu_result[1:0])
-                            2'b11:data_out <= {{24{real_ram_rdata[31]}},real_ram_rdata[31:24]};
-                            2'b10:data_out <= {{24{real_ram_rdata[23]}},real_ram_rdata[23:16]};
-                            2'b01:data_out <= {{24{real_ram_rdata[15]}},real_ram_rdata[15:8]};
-                            2'b00:data_out <= {{24{real_ram_rdata[7]}},real_ram_rdata[7:0]};
-                            default:data_out <= 32'h00000000;
-                        endcase
-                    end
-                    2'b10:data_out <= {16'h0000,real_ram_rdata[15:0]};
-                    2'b11:data_out <= real_ram_rdata;
-                    default:data_out <= real_ram_rdata;
-                    endcase 
-            end
-            endcase
+            read_ce <= 1'b1;
+            case(mem_sel)
+                2'b00:data_out <= 32'h00000000;
+                2'b01:begin 
+                    case(alu_result[1:0])
+                        2'b11:data_out <= {{24{real_ram_rdata[31]}},real_ram_rdata[31:24]};
+                        2'b10:data_out <= {{24{real_ram_rdata[23]}},real_ram_rdata[23:16]};
+                        2'b01:data_out <= {{24{real_ram_rdata[15]}},real_ram_rdata[15:8]};
+                        2'b00:data_out <= {{24{real_ram_rdata[7]}},real_ram_rdata[7:0]};
+                        default:data_out <= 32'h00000000;
+                    endcase
+                end
+                2'b10:data_out <= {16'h0000,real_ram_rdata[15:0]};
+                2'b11:data_out <= real_ram_rdata;
+                default:data_out <= real_ram_rdata;
+            endcase 
         end
         else begin 
-            clean_recv_flag <= 1'b0;
             data_out <= 32'h00000000;
             read_ce <= 1'b0;
         end
@@ -158,16 +125,19 @@ always @(posedge clk or posedge rst) begin
 end
 
 always @(*) begin 
-    case (cur_state) 
-        s0:begin 
-            if ((read_ce || write_ce)&&(!dram_address[20] || !dram_write_addr[20]) ) next_state <= s1;
-            else next_state <= s0;
-        end
-        s1:begin 
-            next_state <= s0;
-        end
-        default:next_state <= s0;
-    endcase 
+    if (rst == 1'b1) next_state <= s0;
+    else begin 
+        case (cur_state) 
+            s0:begin 
+                if ((read_ce || write_ce)&&(!dram_address[20] || !dram_write_addr[20]) ) next_state <= s1;
+                else next_state <= s0;
+            end
+            s1:begin 
+                next_state <= s0;
+            end
+            default:next_state <= s0;
+        endcase 
+    end
 end
 
 always @(*) begin 
@@ -176,7 +146,7 @@ always @(*) begin
         case (next_state) 
             s0:stall_dram <= 1'b0;
             s1:stall_dram <= 1'b1;
-            default:next_state <= 1'b0;
+            default:stall_dram <= 1'b0;
         endcase 
     end
 end
