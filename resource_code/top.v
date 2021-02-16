@@ -4,16 +4,18 @@ module top(
     output wire ce,
     input wire stall_mem,
     //drom
+    input wire dram_write_fin,
+    input wire dram_read_fin,
     input wire [31:0] ram_rdata,
-    output wire [31:0] dram_write_addr,
-    output wire [31:0] dram_read_addr,
-    output wire dwrite_ce,
-    output wire [31:0] wdata,
-    output wire dread_ce,
+    output wire [29:0] dram_write_addr,
+    output wire [29:0] dram_read_addr,
+    output wire dram_write_ce,
+    output wire [31:0] dram_cache_wb_data,
+    output wire dram_read_ce,
     //irom
-    output wire iread_ce,
-    output wire [31:0] iram_addr,
-    input wire [31:0] ram_inst,
+    output wire irom_read_ce,
+    output wire [29:0] irom_addr,
+    input wire [31:0] rom_inst,
     input wire irom_fin
 );
 (* dont_touch = "1" *)wire [31:0] inst_address;
@@ -31,6 +33,11 @@ wire [4:0] shamt;
 (* dont_touch = "1" *)wire bgtz_sig;
 wire Ebranch;
 wire stall_pc_flush_if_id;
+
+//dram cache
+wire [29:0] dram_addr;
+wire dram_cache_miss;
+wire [31:0] dram_cache_data;
 
 //id阶段控制信号
 wire [31:0] jump_address;
@@ -74,6 +81,9 @@ wire stall_dram;
 //储存器读出数据 //寄存器写入地址 寄存器写入信号
 wire [31:0] mem_wdata;
 
+//写储存器数据
+wire [31:0] wdata;
+
 //旁路相关连线
 wire control_rdata_a;
 wire control_rdata_b;
@@ -87,6 +97,13 @@ wire stall_pc;
 wire stall_if_id;
 wire stall_id_ex;
 wire stall_ex_memwb;
+
+//指令cache
+wire iread_ce;
+//cache数据
+wire [31:0] irom_cache_data;
+//缺失信号
+wire irom_cache_miss;
 
 //流水线相关模块与连线
 //if_id
@@ -220,6 +237,7 @@ ex_mem ex_mem(
 
 //流水线气泡模块
 stall stall(
+    .rst(rst),
     .stall_mem(stall_mem),
     .stall_dram(stall_dram),
     .stall_pc_flush_if_id(stall_pc_flush_if_id),
@@ -230,6 +248,8 @@ stall stall(
     .mem_write_ce(dwrite_ce),
     .bgtz_sig(bgtz_sig),
     .ex_RegWrite(ex_RegWrite),
+    .irom_cache_miss(irom_cache_miss),
+    .dram_cache_miss(dram_cache_miss),
     .flush_if_id(flush_if_id),
     .flush_id_ex(flush_id_ex),
     .flush_ex_memwb(flush_ex_memwb),
@@ -244,7 +264,7 @@ pc pc(
     .rst(rst),
     .Ebranch(Ebranch),
     .Jump(Jump),
-    .imme(imme_num),
+    //.imme(imme_num),
     .jmp_reg(jmp_reg),
     .Rrs(Rrs),                
     .jc_instaddress(jc_instaddress),
@@ -264,9 +284,27 @@ inst_rom inst_rom(
     .stall_pc_flush_if_id(stall_pc_flush_if_id),
     .inst(cur_inst),
     .read_ce(iread_ce),
-    .irom_addr(iram_addr),
-    .ram_inst(ram_inst),
+    .irom_addr(irom_addr),
+    .rom_inst(irom_cache_data),
     .irom_fin(irom_fin)
+);
+
+cache_control irom_cache_control(
+    .clk(clk),
+    .rst(rst),
+    .addr(irom_addr),
+    .wdata(),
+    .mem_data(rom_inst),
+    .wr(1'b0),
+    .rd(iread_ce),
+    .mem_write_fin(1'b0),
+    .mem_read_fin(irom_fin),
+    .miss(irom_cache_miss),
+    .mem_read_ce(irom_read_ce),
+    .mem_write_ce(),
+    .cache_r_hit(),
+    .cache_wb_data(),
+    .cache_data(irom_cache_data)
 );
 
 id id(
@@ -373,7 +411,27 @@ mem mem(
     .write_ce(dwrite_ce),
     .wdata(wdata),
     .read_ce(dread_ce),
-    .ram_rdata(ram_rdata)
+    .ram_rdata(dram_cache_data)
+);
+
+assign dram_addr = dram_read_addr;
+
+cache_control dram_cache_control(
+    .clk(clk),
+    .rst(rst),
+    .addr(dram_addr),
+    .wdata(wdata),     //cpu写入cache的数据 来自mem wdata
+    .mem_data(ram_rdata),   //mem替换cache中的数据 来自外部mem
+    .wr(dwrite_ce),
+    .rd(dread_ce),
+    .mem_write_fin(dram_write_fin),
+    .mem_read_fin(dram_read_fin),
+    .miss(dram_cache_miss),
+    .mem_read_ce(dram_read_ce),
+    .mem_write_ce(dram_write_ce),
+    .cache_r_hit(),
+    .cache_wb_data(dram_cache_wb_data),
+    .cache_data(dram_cache_data)
 );
 
 redirect redirect(

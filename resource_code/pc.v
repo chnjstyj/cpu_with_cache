@@ -3,7 +3,7 @@ module pc(
     input rst,
     input Ebranch,
     input Jump,                    //无条件跳转信号 低电平有效
-    (* dont_touch = "1" *)input [31:0] imme,             //来自于id.v 的imme_num
+    //(* dont_touch = "1" *)input [31:0] imme,             //来自于id.v 的imme_num
     input jmp_reg,                 //jr 信号
     input [31:0] Rrs,                     //R[rs] 寄存器内容
     input [31:0] jc_instaddress,   //有条件跳转指令地址

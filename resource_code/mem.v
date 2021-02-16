@@ -11,15 +11,15 @@
     input [1:0] mem_sel,
     input lui_sig,
     (* dont_touch = "1" *)output reg [31:0] dout,
-    output reg [31:0] dram_write_addr,
-    output wire [31:0] dram_read_addr,
+    output reg [29:0] dram_write_addr,
+    output wire [29:0] dram_read_addr,
     output reg write_ce,
     output reg [31:0] wdata,
     output reg read_ce,
     input [31:0] ram_rdata
 );
 
-wire [31:0] dram_address;
+wire [29:0] dram_address;
 
 
 localparam s0 = 1'b0;       //²»ÔİÍ£
@@ -39,14 +39,14 @@ end
 
 assign real_ram_rdata = (flag)?temp:ram_rdata;
 
-assign dram_address = {5'b00000,alu_result[28:2]};
+assign dram_address = {3'b000,alu_result[28:2]};
 assign dram_read_addr = dram_address;
 reg [31:0] data_out;
 
 always @(posedge clk or posedge rst) begin 
     if (rst == 1'b1) begin 
         write_ce <= 1'b0;
-        dram_write_addr <= 32'h00000000;
+        dram_write_addr <= 30'b0;
     end
     else if(MemWrite) begin 
         write_ce <= 1'b1;

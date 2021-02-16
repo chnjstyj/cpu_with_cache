@@ -9,13 +9,17 @@ module cache_control (
     input clk,
     input rst,
     input [29:0] addr,
-    input [31:0] wdata,
+    input [31:0] wdata,  //写入cache的数据
     input [31:0] mem_data,
     input wr,
     input rd,
-    output reg [29:0] mem_addr,
+    input mem_write_fin,
+    input mem_read_fin,
+    output reg miss,         //未命中信号 暂停流水线
+    output reg mem_read_ce,
+    output reg mem_write_ce,
     output wire cache_r_hit,
-    output wire [31:0] cache_wb_data,
+    output wire [31:0] cache_wb_data,   //cache 写回mem的数据
     output reg [31:0] cache_data
 );
 
@@ -67,10 +71,12 @@ always @(*) begin
                 else next_state <= s0;
             end
             s2:begin 
-                next_state <= s3;
+                if (mem_write_fin) next_state <= s3;
+                else next_state <= s2;
             end
             s3:begin 
-                next_state <= s1;
+                if(mem_read_fin) next_state <= s1;
+                else next_state <= s3;
             end
             default: next_state <= s0;
         endcase
@@ -83,30 +89,42 @@ always @(posedge clk or posedge rst) begin
         cache_data <= 32'b0;
         cache_wr <= 1'b0;
         cache_rd <= 1'b0;
+        miss <= 1'b0;
     end
     else begin 
         case (next_state)
             s0:begin 
                 //substitude <= 1'b0;
+                miss <= 1'b0;
                 cache_data <= 32'b0;
                 cache_wr <= 1'b0;
                 cache_rd <= 1'b0;
+                mem_read_ce <= 1'b0;
+                mem_write_ce <= 1'b0;
             end
             s1:begin
                 //substitude <= 1'b0;
                 cache_rd <= rd;
                 cache_wr <= wr;
-                if (r_hit) cache_data <= data;
-                else cache_data <= 32'b0;
+                if (r_hit) begin 
+                    cache_data <= data;
+                    miss <= 1'b0;
+                end
+                else begin 
+                    cache_data <= 32'b0;
+                    miss <= 1'b1;
+                end
             end
             s2:begin 
                 cache_wr <= 1'b0;
                 cache_rd <= 1'b0;
+                mem_write_ce <= 1'b1;
                 //substitude <= 1'b0;
             end
             s3:begin 
                 cache_wr <= 1'b0;
                 cache_rd <= 1'b0;
+
                 //substitude_data <= mem_data;
                 //substitude <= 1'b1;
             end

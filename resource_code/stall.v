@@ -10,6 +10,8 @@ module stall(
     (* dont_touch = "1" *)input bgtz_sig,
     input stall_pc_flush_if_id,
     input ex_RegWrite,
+    input irom_cache_miss,
+    input dram_cache_miss,
     output reg flush_if_id,
     output reg flush_id_ex,
     output reg flush_ex_memwb,
@@ -34,13 +36,13 @@ always @(*) begin
     else begin 
         if (!Jump || jmp_reg || stall_pc_flush_if_id) flush_if_id <= 1'b1;
         else flush_if_id <= 1'b0;
-        if ((id_Branch && ex_RegWrite)||stall_mem||stall_pc_flush_if_id||stall_dram||mem_crash) stall_pc <= 1'b1;
+        if ((id_Branch && ex_RegWrite)||stall_mem||stall_pc_flush_if_id||stall_dram||mem_crash||irom_cache_miss||dram_cache_miss) stall_pc <= 1'b1;
         else stall_pc <= 1'b0;
-        if ((id_Branch && ex_RegWrite)||stall_mem||stall_dram||mem_crash) stall_if_id <= 1'b1;
+        if ((id_Branch && ex_RegWrite)||stall_mem||stall_dram||mem_crash||irom_cache_miss||dram_cache_miss) stall_if_id <= 1'b1;
         else stall_if_id <= 1'b0;
-        if (stall_mem||stall_dram||mem_crash) stall_id_ex <= 1'b1;
+        if (stall_mem||stall_dram||mem_crash||dram_cache_miss) stall_id_ex <= 1'b1;
         else stall_id_ex <= 1'b0;
-        if (stall_mem||stall_dram||mem_crash) stall_ex_memwb <= 1'b1;
+        if (stall_mem||stall_dram||mem_crash||dram_cache_miss) stall_ex_memwb <= 1'b1;
         else stall_ex_memwb <= 1'b0;
         flush_id_ex <= 1'b0;
         flush_ex_memwb <= 1'b0;

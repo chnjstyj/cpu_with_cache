@@ -35,12 +35,7 @@ assign lessthan_result = (data_a < real_data_b?32'b1:32'b0);
 assign xor_result = data_a ^ real_data_b;
 assign sll_result = real_data_b << shamt;
 assign srl_result = real_data_b >> shamt;
-
-mul u_mul(
-.A(data_a),
-.B(real_data_b),
-.P(mul_result)
-);
+assign mul_result = data_a * real_data_b;
 
 always @(*) begin
     case (alu_control)
