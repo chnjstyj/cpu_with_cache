@@ -18,7 +18,7 @@ assign next_instaddress = inst_address + 4'b0100;         //现指令地址+4
 
 always @(posedge clk or negedge ce) begin 
     if(ce == 1'b0) begin 
-        inst_address <= 32'h80000000;
+        inst_address <= 32'h00000000;
     end 
     else if (stall_pc == 1'b0) begin
         if(!Ebranch&&Jump&&!jmp_reg&&!bgtz_sig) begin       //不执行有条件跳转与无条件跳转

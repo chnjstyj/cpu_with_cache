@@ -30,6 +30,7 @@ reg cache_wr;
 reg cache_rd;
 reg [31:0] substitude_data;
 
+wire substitude_fin;
 wire w_hit;
 wire w_miss;
 wire r_hit;
@@ -61,25 +62,52 @@ always @(*) begin
     else begin 
         case (cur_state)
             s0:begin
-                if (wr || rd) next_state <= s1;
-                else next_state <= s0;
+                if (wr || rd) begin 
+                    next_state <= s1;
+                end
+                else begin 
+                    next_state <= s0;
+                end
             end 
             s1:begin
-                if ((w_miss || r_miss) && dirty_bit) next_state <= s2;
-                else if (w_miss || r_miss) next_state <= s3;
-                else if (wr || rd) next_state <= s1;
-                else next_state <= s0;
+                if ((w_miss || r_miss) && dirty_bit) begin 
+                    next_state <= s2;
+                end
+                else if (w_miss || r_miss) begin 
+                    next_state <= s3;
+                end
+                else if (wr || rd) begin 
+                    next_state <= s1;
+                end
+                else begin  
+                    next_state <= s0;
+                end
             end
             s2:begin 
                 if (mem_write_fin) next_state <= s3;
                 else next_state <= s2;
             end
             s3:begin 
-                if(mem_read_fin) next_state <= s1;
+                if(substitude_fin) next_state <= s1;
                 else next_state <= s3;
             end
             default: next_state <= s0;
         endcase
+    end
+end
+
+always @(*) begin
+    if (next_state == s2 || next_state == s3) begin 
+        miss <= 1'b1;
+        cache_data <= data;
+    end
+    else if (next_state == s1 && r_hit == 1'b0) begin 
+        miss <= 1'b1;
+        cache_data <= data;
+    end
+    else begin  
+        miss <= 1'b0;
+        cache_data <= data;
     end
 end
 
@@ -89,13 +117,13 @@ always @(posedge clk or posedge rst) begin
         cache_data <= 32'b0;
         cache_wr <= 1'b0;
         cache_rd <= 1'b0;
-        miss <= 1'b0;
+        //miss <= 1'b0;
     end
     else begin 
         case (next_state)
             s0:begin 
                 //substitude <= 1'b0;
-                miss <= 1'b0;
+                //miss <= 1'b0;
                 cache_data <= 32'b0;
                 cache_wr <= 1'b0;
                 cache_rd <= 1'b0;
@@ -106,25 +134,30 @@ always @(posedge clk or posedge rst) begin
                 //substitude <= 1'b0;
                 cache_rd <= rd;
                 cache_wr <= wr;
-                if (r_hit) begin 
+                mem_read_ce <= 1'b0;
+                mem_write_ce <= 1'b0;
+                /*if (r_hit) begin 
                     cache_data <= data;
-                    miss <= 1'b0;
+                    //miss <= 1'b0;
                 end
                 else begin 
                     cache_data <= 32'b0;
-                    miss <= 1'b1;
-                end
+                    //miss <= 1'b1;
+                end*/
             end
             s2:begin 
                 cache_wr <= 1'b0;
                 cache_rd <= 1'b0;
                 mem_write_ce <= 1'b1;
+                //miss <= 1'b1;
                 //substitude <= 1'b0;
             end
             s3:begin 
                 cache_wr <= 1'b0;
                 cache_rd <= 1'b0;
-
+                mem_read_ce <= 1'b1;
+                mem_write_ce <= 1'b0;
+                //miss <= 1'b1;
                 //substitude_data <= mem_data;
                 //substitude <= 1'b1;
             end
@@ -139,7 +172,7 @@ always @(posedge clk or posedge rst) begin
 end
 
 always @(*) begin
-    if (next_state == s3) begin 
+    if (next_state == s3 && mem_read_fin) begin 
         substitude <= 1'b1;
         substitude_data <= mem_data;
     end
@@ -158,6 +191,7 @@ cache u_cache(
 .wr(cache_wr),
 .substitude(substitude),
 .substitude_data(substitude_data),
+.substitude_fin(substitude_fin),
 .dirty_bit(dirty_bit),
 .r_hit(r_hit),
 .r_miss(r_miss),

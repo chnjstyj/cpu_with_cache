@@ -13,8 +13,4 @@ resource_code/.VSCodeCounter/results.csv
 !/doc/*.pdf
 /uart/*
 /project/*
-/resource_code/top_tb.v
 
-=======
-
->>>>>>> 1e41bbf2bc6626f75e4c1a8c81e67aedd995fee6

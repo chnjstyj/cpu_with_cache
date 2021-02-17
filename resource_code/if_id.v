@@ -14,14 +14,14 @@ module if_id(
 always @(posedge clk or posedge rst) begin
     if(rst == 1'b1) begin
         id_inst <= 32'h00000000;
-        id_cur_instaddress <= 32'h80000000;
-        id_next_instaddress <= 32'h80000004;
+        id_cur_instaddress <= 32'h00000000;
+        id_next_instaddress <= 32'h00000004;
     end
     else if (stall_if_id == 1'b0) begin 
         if (flush_if_id == 1'b1) begin
             id_inst <= 32'h00000000;
-            id_cur_instaddress <= 32'h80000000;
-            id_next_instaddress <= 32'h80000004;
+            id_cur_instaddress <= 32'h00000000;
+            id_next_instaddress <= 32'h00000004;
         end
         else begin 
             id_inst <= if_inst;
